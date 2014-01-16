@@ -265,7 +265,7 @@ function _shareto_get_options($iconstyle, $count, $size) {
     }
     foreach ($settings['show'] as $icon) {
       if ($icon['status']) {
-        $b .= '<a class="jiathis_button_'.$icon['id'].' shareto_icon" name="'.$icon['id'].'"></a>';
+        $b .= '<a class="jiathis_button_'.$icon['key'].' shareto_icon" name="'.$icon['key'].'"></a>';
       }
     }
     if ($settings['more_enabled']) {
