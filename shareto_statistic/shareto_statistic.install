@@ -1,0 +1,62 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function shareto_statistic_schema() {
+  $schema['shareto_statistic_log'] = array(
+    'description' => 'User share log.',
+    'fields' => array(
+      'sid' => array(
+        'description' => 'The primary identifier for a log.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Primary Key: {users}.uid for user.',
+      ),
+      'nid' => array(
+        'description' => 'The {node}.nid this record.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'url' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'description' => 'Share url address.',
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp when share.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('sid'),
+    'indexes' => array(
+      'uid' => array('uid'),
+      'nid' => array('nid'),
+      'url' => array('url'),
+      'created' => array('created'),
+    ),
+    'foreign keys' => array(
+      'user' => array(
+        'table' => 'users',
+        'columns' => array('uid' => 'uid'),
+      ),
+      'node' => array(
+        'table' => 'node',
+        'columns' => array('nid' => 'nid'),
+      ),
+    ),
+  );
+  return $schema;
+}

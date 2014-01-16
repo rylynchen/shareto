@@ -1,0 +1,8 @@
+name = Shareto Statistic
+description = 存储用户shareto记录
+package = Custom
+core = 7.x
+
+dependencies[] = shareto
+
+configure = admin/config/services/shareto/statistic

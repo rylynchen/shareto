@@ -1,0 +1,73 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function shareto_statistic_menu() {
+  $items['admin/config/services/shareto/statistic'] = array(
+    'title'            => '统计',
+    'description'      => 'Configure ShareTo Statistic settings',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('shareto_statistic_admin_settings'),
+    'access arguments' => array('administer shareto statistic'),
+    'file'             => 'shareto_statistic.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+  );
+  $items['shareto/statistic/ajax/record'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('shareto_statistic_ajax_record_callback'),
+    'access arguments' => array('shareto statistic'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_perm().
+ */
+function shareto_statistic_permission() {
+  return array(
+    'administer shareto statistic' => array(
+      'title' => t('Administer share to statistic.'),
+    ),
+    'shareto statistic' => array(
+      'title' => t('Access to record share to action.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_shareto_display_alter().
+ */
+function shareto_statistic_shareto_display_alter($output) {
+	if (variable_get('shareto_statistic_enabled', NULL) && user_access('shareto statistic')) {
+		$url = 'http://'.$_SERVER['HTTP_HOST'].'/'.current_path();
+		$node = menu_get_object();
+		drupal_add_js(array('shareto_statistic' => array('url' => $url, 'nid' => $node ? $node->nid : 0)), 'setting');
+		drupal_add_js(drupal_get_path('module', 'shareto_statistic').'/shareto_statistic.js');
+	}
+}
+
+/**
+ * Ajax callback for shareto statistic record.
+ */
+function shareto_statistic_ajax_record_callback() {
+  global $user;
+  $json = array();
+  if (isset($_REQUEST['callback']) && isset($_REQUEST['nid']) && isset($_REQUEST['url'])) {
+		$nid = intval($_REQUEST['nid']);
+		$url = trim($_REQUEST['url']);
+		$created = time();
+		$json['ret'] = 1;
+    drupal_alter('shareto_statistic_log_pre_insert', $user->uid, $nid, $url, $created);
+    db_insert('shareto_statistic_log')
+      ->fields(array(
+      	'uid' => $user->uid,
+        'nid' => $nid,
+        'url' => $url,
+        'created' => $created,
+      ))
+      ->execute();
+	}
+	echo $_REQUEST['callback']."(".json_encode($json).");";
+}

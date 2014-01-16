@@ -1,0 +1,345 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function shareto_menu() {
+  $items['admin/config/services/shareto'] = array(
+    'title'            => 'ShareTo Share Button',
+    'description'      => 'Configure ShareTo Share Button settings',
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer shareto sharebutton'),
+    'file'             => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+  $items['admin/config/services/shareto/page'] = array(
+    'title'            => 'ShareTo Share Button page',
+    'description'      => 'Configure ShareTo Share Button settings for pages',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('shareto_page_admin_settings'),
+    'access arguments' => array('administer shareto sharebutton'),
+    'file'             => 'shareto.admin.inc',
+  );
+  $items['admin/config/services/shareto/block'] = array(
+    'title'            => 'ShareTo Share Button block',
+    'description'      => 'Configure ShareTo Share Button settings for block',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('shareto_block_admin_settings'),
+    'access arguments' => array('administer shareto sharebutton'),
+    'file'             => 'shareto.admin.inc',
+  );
+  $items['admin/config/services/shareto/icon'] = array(
+    'title'            => 'ShareTo Share Button Icon',
+    'description'      => 'Configure ShareTo Share Button icon settings for block and pages',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('shareto_icon_admin_settings'),
+    'access arguments' => array('administer shareto sharebutton'),
+    'file'             => 'shareto.admin.inc',
+  );
+  $items['admin/config/services/shareto/icon/style'] = array(
+    'title' => 'Style',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['admin/config/services/shareto/icon/icons'] = array(
+    'title'            => 'Icons',
+    'description'      => 'Configure ShareTo Share Button icons settings for block and pages',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('shareto_icons_admin_settings'),
+    'access arguments' => array('administer shareto sharebutton'),
+    'file'             => 'shareto.admin.inc',
+    'type'             => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_perm().
+ */
+function shareto_permission() {
+  return array(
+    'administer shareto sharebutton' => array(
+      'title' => t('Administer ShareTo Sharebutton'),
+    ),
+    'view shareto sharebutton' => array(
+      'title' => t('View ShareTo Sharebutton'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_theme().
+ */
+function shareto_theme() {
+  return array(
+  'shareto_icon_admin_settings' => array(
+    'render element' => 'form',
+    'file' => 'shareto.admin.inc',
+  ),
+  'shareto_button' => array(
+    'arguments' => array(
+      'node' => NULL,
+      'url' => NULL,
+      'css' => '',
+      'size' => '1',
+      'iconstyle' => '0',
+      'count' => 1,
+      'syntax' => 'ShareTo_sharescript',
+      ),
+    ),
+  'shareto_button_block' => array(
+    'arguments' => array(
+      'node' => NULL,
+      'url' => NULL,
+      'css' => '',
+      'size' => '1',
+      'iconstyle' => '0',
+      'count' => 1,
+      'syntax' => 'ShareTo_sharescript',
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function shareto_node_view($node, $view_mode, $langcode) {
+
+  if (in_array($node->type, variable_get('shareto_node_types', array()), TRUE)
+    && user_access('view shareto sharebutton')) {
+
+    $locations = variable_get('shareto_node_location', array('full'));
+    $default = array(
+       'count' => 0,
+       'size' => '1',  // standard
+       'css' => 'margin: 0 1em 1em 1em;float:right',
+       'iconstyle' => '0',
+		   'syntax' => 'ShareTo_sharescript',
+		);
+    $button_settings = array_merge($default, variable_get('shareto_button_settings', array()));
+
+    $button_settings['node'] = $node;
+    if (!empty($locations[$view_mode]) && empty($locations['link'])) {
+				$node->content['shareto'] = array(
+        '#markup' => theme('shareto_button__' . $node->type, $button_settings),
+        '#weight' => variable_get('shareto_weight', -10),
+      );
+    }
+    if (!empty($locations[$view_mode]) && !empty($locations['link'])) {
+      $node->content['links']['#links']['node_shareto_link'] = array(
+       'title' => theme('shareto_button__' . $node->type, $button_settings),
+       'html' => TRUE,
+      );
+    }
+  }
+}
+
+/**
+ * Returns HTML for the ShareTo Share button.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *   - object: (optional) The node object. (Only will be use its nid)
+ *   - size:  (optional) A string 'small', 'medium', 'standard', 'tall'
+ *   - count: (optional) A integer 0 or 1 (0 default will not print aggregated counting
+ *   - css: (optional) A string with inline CSS rules for the wrapper.
+ *   - iconstyle: (optional) An integer 0 or 3
+ *
+ * @ingroup themeable
+ */
+function theme_shareto_button($variables) {
+	$appkey = variable_get('shareto_appkey', '');
+	$syntax = $variables['syntax'];
+	$count = $variables['count'];
+	$size = $variables['size'];
+	$iconstyle = $variables['iconstyle'];
+	//$ShareTo_btn = $iconstyle + $size;
+
+  list($count,$button) = _shareto_get_options ($iconstyle, $count, $size);
+  $button = _create_shareto_html($button,$count,$appkey,$iconstyle);
+
+	// Wrap it and serve it
+	  if ($variables['css'] !== 'nowrapper') {
+	    $css =   empty($variables['css'])   ? '' : 'style="' .  check_plain($variables['css']) . '"';
+	    $button = '<div class="shareto-wrapper" '. $css . ' >' . $button . '</div>';
+	  }
+	  return $button;
+}
+
+/**
+ * Returns HTML for the ShareTo Share button.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *   - object: (optional) The node object. (Only will be use its nid)
+ *   - size_block:  (optional) A string 'small', 'medium', 'standard', 'tall'
+ *   - count_block: (optional) A integer 0 or 1 (0 default will not print aggregated counting
+ *   - css_block: (optional) A string with inline CSS rules for the wrapper.
+ *   - iconstyle_block: (optional) An integer 0 or 3
+ *
+ */
+function theme_shareto_button_block($variables) {
+	$appkey = variable_get('shareto_appkey', '');
+//	$syntax = $variables['syntax'];
+	$count = $variables['count_block'];
+	$size = $variables['size_block'];
+	$iconstyle = $variables['iconstyle_block'];
+	$ShareTo_btn = $iconstyle + $size;
+
+  list($count,$button,$iconstyle) = _shareto_get_options ($iconstyle, $count, $size);
+  $button = _create_shareto_html($button,$count,$appkey,$iconstyle);
+
+	// Wrap it and serve it
+	  if ($variables['css_block'] !== 'nowrapper') {
+	    $css =   empty($variables['css_block'])   ? '' : 'style="' .  check_plain($variables['css_block']) . '"';
+	    $button = '<div class="shareto-wrapper" '. $css . ' >' . $button . '</div>';
+	  }
+	  return $button;
+}
+
+/**
+ * Implements hook_block_info().
+ *
+ */
+function shareto_block_info($op = 'list', $delta = 0, $edit = array()) {
+  $blocks['ShareTo'] = array(
+    'info' => t('ShareTo Sharebutton'),
+    'cache' => DRUPAL_CACHE_GLOBAL,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ *
+ */
+function shareto_block_view($delta = '') {
+	 $block = array();
+	if($delta == 'ShareTo'){
+			$block['content'] = _generate__shareto_block_button();
+	}
+	return $block;
+}
+
+function _generate__shareto_block_button(){
+	$default = array(
+     'count_block' => 0,
+     'size_block' => '1',  // standard
+     'css_block' => 'margin: 0 1em 1em 1em;height:50px',
+     'iconstyle_block' => '1',
+     'syntax' => 'ShareTo_sharescript',
+  );
+  $button_settings = array_merge($default, variable_get('shareto_block_button_settings', array()));
+	return theme('shareto_button_block', $button_settings);
+}
+
+
+function _shareto_get_options($iconstyle, $count, $size) {
+  if($count == 1){
+    $count = '<a class="jiathis_counter_style"></a>';
+  } else {
+    $count='';
+  }
+
+  $settings = shareto_icon_settings();
+  $b = '';
+  switch ($size) {
+    case 4:
+      $b = '<div class="jiathis_style shareto">';
+      break;
+    case 3:
+      $b = '<div class="jiathis_style shareto">';
+      break;
+    case 2:
+      $b = '<div class="jiathis_style_24x24 shareto">';
+      break;
+    default:
+      $b = '<div class="jiathis_style_32x32 shareto">';
+      break;
+  }
+  if (isset($settings['custom']) && $settings['custom']) {
+    // custom
+    if ($settings['prev_enabled']) {
+      $b .= '<span class="jiathis_txt shareto_pre_label">'.$settings['prev_label'].'</span>';
+    }
+    foreach ($settings['show'] as $icon) {
+      if ($icon['status']) {
+        $b .= '<a class="jiathis_button_'.$icon['id'].' shareto_icon" name="'.$icon['id'].'"></a>';
+      }
+    }
+    if ($settings['more_enabled']) {
+      $b .= '<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>';
+    }
+  } else {
+    // normal
+    //tiny icon
+    if ($size == 4) {
+      $b .= '<span class="jiathis_txt">分享到：</span>
+        <a class="jiathis_button_icons_1"></a>
+        <a class="jiathis_button_icons_2"></a>
+        <a class="jiathis_button_icons_3"></a>
+        <a class="jiathis_button_icons_4"></a>
+        <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+  ';
+    }
+    //small icon
+    else if ($size == 3) {
+      $b .= '<a class="jiathis_button_qzone"></a>
+        <a class="jiathis_button_tsina"></a>
+        <a class="jiathis_button_tqq"></a>
+        <a class="jiathis_button_renren"></a>
+        <a class="jiathis_button_kaixin001"></a>
+        <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>';
+    }
+    //medium icon
+    else if ($size == 2) {
+      $b .= '<a class="jiathis_button_qzone"></a>
+        <a class="jiathis_button_tsina"></a>
+        <a class="jiathis_button_tqq"></a>
+        <a class="jiathis_button_renren"></a>
+        <a class="jiathis_button_kaixin001"></a>
+        <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>';
+    }
+    //large icon && default
+    else {
+      $b .= '<a class="jiathis_button_qzone"></a>
+        <a class="jiathis_button_tsina"></a>
+        <a class="jiathis_button_tqq"></a>
+        <a class="jiathis_button_renren"></a>
+        <a class="jiathis_button_kaixin001"></a>
+        <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>';
+    }
+  }
+
+  return array($count,$b,$iconstyle);
+}
+
+function _create_shareto_html($button,$count,$appkey,$iconstyle){
+  //standard
+  if($iconstyle=='0'){
+    $iconstyle='_mini';
+  }
+  // mini
+  else if ($iconstyle=='1'){
+    $iconstyle='';
+  }
+
+ 	$output = '<!-- ShareTo Button BEGIN -->'.$button.$count.'
+            </div>
+            <script type="text/javascript" src="http://v3.jiathis.com/code'.$iconstyle.'/jia.js" charset="utf-8"></script>
+            <!-- ShareTo Button END -->';
+  drupal_add_css(drupal_get_path('module', 'shareto').'/shareto.css');
+  drupal_alter('shareto_display', $output);
+	return $output;
+}
+
+function shareto_icon_settings() {
+  $settings = variable_get('shareto_icon_settings', NULL);
+  return isset($settings) ? unserialize($settings) : array();
+}
+
+function shareto_icons_settings() {
+  $settings = variable_get('shareto_icons_settings', NULL);
+  return isset($settings) ? unserialize($settings) : array();
+}

@@ -1,0 +1,6 @@
+name = Shareto
+description = 基于第三方jiathis模块，添加分享自定义，记录用户分享记录等功能模块。
+package = Custom
+core = 7.x
+
+configure = admin/config/services/shareto

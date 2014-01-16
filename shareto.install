@@ -1,0 +1,31 @@
+<?php
+
+/**
+ * @file
+ * Enable and uninstall functions for the ShareTo Button module.
+ */
+
+/**
+ * Implements hook_enable().
+ */
+function shareto_enable() {
+  $node_types = variable_get('shareto_node_types', array());
+  if (empty($node_types)) {
+    drupal_set_message(t('To finish enabling ShareTo Button in your nodes, visit the <a href="@settings">settings</a> page. And remember to check the <a href="@perm">permissions</a> to view the button.', array('@settings' => url('admin/config/services/shareto'), '@perm' => url('admin/people/permissions', array('fragment' => 'module-shareto')))));
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function shareto_uninstall() {
+  variable_del('shareto_node_types');
+  variable_del('shareto_node_location');
+  variable_del('shareto_weight');
+  variable_del('shareto_appkey');
+  variable_del('shareto_showonteasers');
+	variable_del('shareto_block_button_settings');
+  variable_del('shareto_button_settings');
+  variable_del('shareto_icon_settings');
+  variable_del('shareto_icons_settings');
+}
